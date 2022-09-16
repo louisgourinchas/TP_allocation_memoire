@@ -28,6 +28,7 @@ typedef struct mem_state{
 //typedef struct mem_state mem_state_t;
 
 static mem_state_t gbl_state;
+static mem_fit_function_t gbl_function;
 //-------------------------------------------------------------
 // mem_init
 //-------------------------------------------------------------
@@ -51,9 +52,44 @@ void mem_init() {
 **/
 void *mem_alloc(size_t size) {
 	//TODO: implement
-	//size must me total (entete + size param)
-	assert(! "NOT IMPLEMENTED !");
-    return NULL;
+
+	size_t realsize = size;
+	//arondissement de la taille allouée 
+	//TODO fonction à part.
+	if(size%8 != 0){
+		realsize = 8*((size/8)+2); //+1 pour avoir le multiple de 8 supp, +2 pour compter la taille de l'entete
+	}
+
+	//on trouve un block de taille suffisante
+	struct mem_free_block_s *block_courant = gbl_state.first;
+	struct mem_free_block_s *block_precedent = NULL;
+	struct mem_alloue_block_s *block_alloue;
+
+	while(block_courant != NULL && block_courant->size < realsize){
+		block_precedent = block_courant;
+		block_courant = block_courant->next;
+	}
+
+	if (block_precedent == NULL){ //le premier block libre était de taille suffisante.
+
+		size_t new_size = gbl_state.first->size-realsize;
+		struct mem_free_block_s *new_next = gbl_state.first->next;
+		gbl_state.first = gbl_state.first+realsize;
+		gbl_state.first->size = new_size;
+		gbl_state.first->next = new_next;
+
+		block_alloue = block_courant;
+		block_alloue->size = realsize;
+
+	} else {
+		struct mem_free_block_s *residus = block_courant+realsize;
+		residus.size = block_courant.size-realsize;
+		residus.next = block_courant.next;
+
+		block_alloue = block_courant;
+		block_alloue.size = realsize;
+	}
+	
 }
 
 //-------------------------------------------------------------
@@ -81,7 +117,7 @@ void mem_free(void *zone) {
 // Itérateur(parcours) sur le contenu de l'allocateur
 // mem_show
 //-------------------------------------------------------------
-//TODO nettoyer les commentaires, optimiser l'utilisation/affectation des variables courantes pour éviter de la redondance (?)
+//TODO nettoyer les commentaires. tester. optimiser l'utilisation/affectation des variables courantes pour éviter de la redondance (?).
 void mem_show(void (*print)(void *, size_t, int free)) {
 
 	void *adresse_test = gbl_state.adresse; //position actuelle dans la mémoire, sans disctinction libre/alloue
