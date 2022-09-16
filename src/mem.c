@@ -10,6 +10,24 @@
 #include "mem_os.h"
 #include <assert.h>
 
+struct mem_free_block_s{
+	size_t size;
+	struct mem_free_block_s* next;
+};
+
+struct mem_alloue_block_s{
+	size_t size;
+};
+
+typedef struct mem_state{
+	void *adresse;
+	size_t size;
+	struct mem_free_block_s* first;
+} mem_state_t;
+
+//typedef struct mem_state mem_state_t;
+
+static mem_state_t gbl_state;
 //-------------------------------------------------------------
 // mem_init
 //-------------------------------------------------------------
@@ -18,8 +36,11 @@
  * If already init it will re-init.
 **/
 void mem_init() {
-    //TODO: implement
-	assert(! "NOT IMPLEMENTED !");
+	gbl_state.adresse = mem_space_get_addr();
+	gbl_state.size=mem_space_get_size();
+	gbl_state.first = gbl_state.adresse;
+	(gbl_state.first)->size=gbl_state.size;
+	(gbl_state.first)->next=NULL;
 }
 
 //-------------------------------------------------------------
@@ -60,7 +81,18 @@ void mem_free(void *zone) {
 // mem_show
 //-------------------------------------------------------------
 void mem_show(void (*print)(void *, size_t, int free)) {
-    //TODO: implement
+
+	void *adresse_test = gbl_state.adresse;
+	struct mem_free_block_s *block_courant_libre = gbl_state.first;
+
+	while(adresse_test <= block_courant_libre){
+		
+	}
+	print(block_courant_libre, block_courant_libre->size, 1);
+	while(block_courant_libre->next != NULL){
+		block_courant_libre = block_courant_libre->next;
+		print(block_courant_libre, block_courant_libre->size, 1);	
+	}
 	assert(! "NOT IMPLEMENTED !");
 }
 
