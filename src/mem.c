@@ -51,6 +51,7 @@ void mem_init() {
 **/
 void *mem_alloc(size_t size) {
 	//TODO: implement
+	//size must me total (entete + size param)
 	assert(! "NOT IMPLEMENTED !");
     return NULL;
 }
@@ -80,20 +81,39 @@ void mem_free(void *zone) {
 // Itérateur(parcours) sur le contenu de l'allocateur
 // mem_show
 //-------------------------------------------------------------
+//TODO nettoyer les commentaires, optimiser l'utilisation/affectation des variables courantes pour éviter de la redondance (?)
 void mem_show(void (*print)(void *, size_t, int free)) {
 
-	void *adresse_test = gbl_state.adresse;
+	void *adresse_test = gbl_state.adresse; //position actuelle dans la mémoire, sans disctinction libre/alloue
 	struct mem_free_block_s *block_courant_libre = gbl_state.first;
+	struct mem_alloue_block_s *block_courant_alloue;
 
-	while(adresse_test <= block_courant_libre){
-		
+	//On continue tant qu'on n'a pas parcouru tout le block mémoire.
+	while (adresse_test != gbl_state.adresse + gbl_state.size){
+
+		//soit notre pointeur adresse_test est sur un block alloué soit sur un block libre (ou sur la fin de la mémoire, mais on ne passe pas dans la boucle).
+		//donc seulement 2 cas possibles à traiter.
+		if(adresse_test == block_courant_libre){	//cas ou le pointeur est sur un block libre.
+			
+			print(block_courant_libre, block_courant_libre->size, 1); //affichage
+
+			//on doit maintenant passer au prochain block (mettre à jour nos varaibles courantes)
+			//le prochain block est un block libre
+			if(block_courant_libre + block_courant_libre->size == block_courant_libre->next){
+				adresse_test, block_courant_libre = block_courant_libre->next;
+			} else {	//le prochain block est un block alloue
+				adresse_test, block_courant_alloue = block_courant_libre->next;
+			}
+		} else { //le pointeur n'est pas sur un block libre, donc block alloue
+			block_courant_alloue = adresse_test;
+			print(block_courant_alloue, block_courant_alloue->size, 0);
+
+			//mise à jour des variables courantes pour le prochain block.
+			//pas besoin de cas par cas car block_courant_alloue sera set au prochain tour de boucle et block_courant_libre n'est jamais en retard.
+			adresse_test = block_courant_alloue + block_courant_alloue->size;
+
+		}
 	}
-	print(block_courant_libre, block_courant_libre->size, 1);
-	while(block_courant_libre->next != NULL){
-		block_courant_libre = block_courant_libre->next;
-		print(block_courant_libre, block_courant_libre->size, 1);	
-	}
-	assert(! "NOT IMPLEMENTED !");
 }
 
 //-------------------------------------------------------------
