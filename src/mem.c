@@ -9,6 +9,7 @@
 #include "mem_space.h"
 #include "mem_os.h"
 #include <assert.h>
+#include <stdio.h>
 
 struct mem_free_block_s{
 	size_t size;
@@ -53,17 +54,16 @@ void mem_init() {
  * Allocate a bloc of the given size.
 **/
 void *mem_alloc(size_t size) {
-	//TODO test, gérer cas ou aucun bloc de taille nécessaire est libre.
 
 	size_t realsize = size;
-	//arondissement de la taille allouée 
+	//arondissement de la taille allouée, pas sur du process ici 
 	//TODO fonction à part.
 	if(size%8 != 0){
 		realsize = 8*((size/8)+2); //+1 pour avoir le multiple de 8 supp, +2 pour compter la taille de l'entete
 	}
 
 	//on trouve un block de taille suffisante
-	struct mem_free_block_s *block_courant = gbl_state.first;
+	struct mem_free_block_s *block_courant = gbl_state.first; 	
 	struct mem_free_block_s *block_precedent = NULL;
 	struct mem_alloue_block_s *block_alloue;
 
@@ -72,12 +72,17 @@ void *mem_alloc(size_t size) {
 		block_courant = block_courant->next;
 	}
 
+	//pas de block mémoire de taille suffisante.
+	if (block_courant == NULL){
+		return NULL;
+	}
+
 	if (block_precedent == NULL){ //le premier block libre était de taille suffisante.
 
-		size_t new_size = gbl_state.first->size-realsize;
+		//TODO Fix problème d'acces mémoire ligne 87 -> non alloué.
+		size_t new_size = (gbl_state.first->size)-realsize;
 		struct mem_free_block_s *new_next = gbl_state.first->next;
-		struct mem_free_block_s *test = gbl_state.first+realsize;
-		gbl_state.first = test;
+		gbl_state.first = gbl_state.first+realsize;
 		gbl_state.first->size = new_size;
 		gbl_state.first->next = new_next;
 
