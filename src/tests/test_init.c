@@ -21,6 +21,7 @@ static void *alloc_max(size_t estimate) {
     while ((result = mem_alloc(estimate)) == NULL) {
         estimate--;
     }
+    
     debug("Alloced %zu bytes at %p\n", estimate, result);
     if (last) {
         // Idempotence test

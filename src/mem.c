@@ -28,7 +28,9 @@ typedef struct mem_state{
 //typedef struct mem_state mem_state_t;
 
 static mem_state_t gbl_state;
-static mem_fit_function_t gbl_function;
+//vide.
+//static mem_fit_function_t gbl_function;
+
 //-------------------------------------------------------------
 // mem_init
 //-------------------------------------------------------------
@@ -40,8 +42,8 @@ void mem_init() {
 	gbl_state.adresse = mem_space_get_addr();
 	gbl_state.size=mem_space_get_size();
 	gbl_state.first = gbl_state.adresse;
-	(gbl_state.first)->size=gbl_state.size;
-	(gbl_state.first)->next=NULL;
+	gbl_state.first->size=gbl_state.size;
+	gbl_state.first->next=NULL;
 }
 
 //-------------------------------------------------------------
@@ -51,7 +53,7 @@ void mem_init() {
  * Allocate a bloc of the given size.
 **/
 void *mem_alloc(size_t size) {
-	//TODO: implement
+	//TODO test, gérer cas ou aucun bloc de taille nécessaire est libre.
 
 	size_t realsize = size;
 	//arondissement de la taille allouée 
@@ -74,22 +76,24 @@ void *mem_alloc(size_t size) {
 
 		size_t new_size = gbl_state.first->size-realsize;
 		struct mem_free_block_s *new_next = gbl_state.first->next;
-		gbl_state.first = gbl_state.first+realsize;
+		struct mem_free_block_s *test = gbl_state.first+realsize;
+		gbl_state.first = test;
 		gbl_state.first->size = new_size;
 		gbl_state.first->next = new_next;
 
-		block_alloue = block_courant;
+		block_alloue = (void *) block_courant;
 		block_alloue->size = realsize;
 
 	} else {
 		struct mem_free_block_s *residus = block_courant+realsize;
-		residus.size = block_courant.size-realsize;
-		residus.next = block_courant.next;
+		residus->size = block_courant->size - realsize;
+		residus->next = block_courant->next;
 
-		block_alloue = block_courant;
-		block_alloue.size = realsize;
+		block_alloue = (void *) block_courant;
+		block_alloue->size = realsize;
 	}
-	
+
+	return (void *)block_alloue + 8;
 }
 
 //-------------------------------------------------------------
@@ -136,9 +140,11 @@ void mem_show(void (*print)(void *, size_t, int free)) {
 			//on doit maintenant passer au prochain block (mettre à jour nos varaibles courantes)
 			//le prochain block est un block libre
 			if(block_courant_libre + block_courant_libre->size == block_courant_libre->next){
-				adresse_test, block_courant_libre = block_courant_libre->next;
+				adresse_test = block_courant_libre->next;
+				block_courant_libre = block_courant_libre->next;
 			} else {	//le prochain block est un block alloue
-				adresse_test, block_courant_alloue = block_courant_libre->next;
+				adresse_test = block_courant_libre->next;
+				block_courant_alloue = (void *) block_courant_libre->next;
 			}
 		} else { //le pointeur n'est pas sur un block libre, donc block alloue
 			block_courant_alloue = adresse_test;
