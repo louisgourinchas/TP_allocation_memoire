@@ -55,11 +55,16 @@ void mem_init() {
 **/
 void *mem_alloc(size_t size) {
 
+	//Possiblement nécessaire de changer la taille pour prendre en compte l'en-tête (enlevé pour simplifier)
+	/*
 	size_t realsize = size;
-	//arondissement de la taille allouée, pas sur du process ici 
-	//TODO fonction à part.
 	if(size%8 != 0){
 		realsize = 8*((size/8)+2); //+1 pour avoir le multiple de 8 supp, +2 pour compter la taille de l'entete
+	}*/
+
+	//on essaie d'allouer un block plus grand que la mémoire
+	if(size > gbl_state.size){
+		return NULL;
 	}
 
 	//on trouve un block de taille suffisante
@@ -67,7 +72,8 @@ void *mem_alloc(size_t size) {
 	struct mem_free_block_s *block_precedent = NULL;
 	struct mem_alloue_block_s *block_alloue;
 
-	while(block_courant != NULL && block_courant->size < realsize){
+	//parcours des blocks vides jusqu'a arriver à la fin OU trouver un block courant de taille suffisante.
+	while(block_courant != NULL && block_courant->size < size){
 		block_precedent = block_courant;
 		block_courant = block_courant->next;
 	}
@@ -79,23 +85,31 @@ void *mem_alloc(size_t size) {
 
 	if (block_precedent == NULL){ //le premier block libre était de taille suffisante.
 
-		//TODO Fix problème d'acces mémoire ligne 87 -> non alloué.
-		size_t new_size = (gbl_state.first->size)-realsize;
-		struct mem_free_block_s *new_next = gbl_state.first->next;
-		gbl_state.first = gbl_state.first+realsize;
-		gbl_state.first->size = new_size;
-		gbl_state.first->next = new_next;
+		//on a alloué exactement toute la mémoire disponible 
+		if (gbl_state.first->size == size){
 
+			gbl_state.first = NULL;
+
+		} else {
+
+			size_t new_size = (gbl_state.first->size)-size;
+			struct mem_free_block_s *new_next = gbl_state.first->next;
+			gbl_state.first = gbl_state.first+size;
+			gbl_state.first->size = new_size;
+			gbl_state.first->next = new_next;
+
+		}
 		block_alloue = (void *) block_courant;
-		block_alloue->size = realsize;
+		block_alloue->size = size;
+
 
 	} else {
-		struct mem_free_block_s *residus = block_courant+realsize;
-		residus->size = block_courant->size - realsize;
+		struct mem_free_block_s *residus = block_courant+size;
+		residus->size = block_courant->size - size;
 		residus->next = block_courant->next;
 
 		block_alloue = (void *) block_courant;
-		block_alloue->size = realsize;
+		block_alloue->size = size;
 	}
 
 	return (void *)block_alloue + 8;
