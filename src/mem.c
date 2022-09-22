@@ -56,6 +56,7 @@ void mem_init() {
 void *mem_alloc(size_t size) {
 
 	//Possiblement nécessaire de changer la taille pour prendre en compte l'en-tête (enlevé pour simplifier)
+	//Problèmesi on n'accompte pas pour l'en-tete: l'user 
 	/*
 	size_t realsize = size;
 	if(size%8 != 0){
@@ -90,7 +91,7 @@ void *mem_alloc(size_t size) {
 
 			gbl_state.first = NULL;
 
-		} else {
+		} else { //il reste de la mémoire libre dans gbl_state.first
 
 			size_t new_size = (gbl_state.first->size)-size;
 			struct mem_free_block_s *new_next = gbl_state.first->next;
@@ -102,12 +103,19 @@ void *mem_alloc(size_t size) {
 		block_alloue = (void *) block_courant;
 		block_alloue->size = size;
 
+	} else {	//le premier block n'était pas suffisant, on est sur un block b quelquonque dans la mémoire.
 
-	} else {
-		struct mem_free_block_s *residus = block_courant+size;
-		residus->size = block_courant->size - size;
-		residus->next = block_courant->next;
+		if (block_courant -> size == size){ //on alloue le block courant en entier.
 
+			block_precedent->next = block_courant->next;
+
+		} else { //il reste de la mémoire libre dans block_courant
+
+			struct mem_free_block_s *residus = block_courant+size;
+			residus->size = block_courant->size - size;
+			residus->next = block_courant->next;
+			block_precedent->next = residus;
+		}
 		block_alloue = (void *) block_courant;
 		block_alloue->size = size;
 	}
@@ -120,9 +128,9 @@ void *mem_alloc(size_t size) {
 //-------------------------------------------------------------
 size_t mem_get_size(void * zone)
 {
-    //TODO: implement
-	assert(! "NOT IMPLEMENTED !");
-    return 0;
+    //TODO: test. potentiel problème: la zone est-elle allouée ou non (offset différent)
+	struct mem_alloue_block_s* block_zone = zone-8;
+    return block_zone->size;
 }
 
 //-------------------------------------------------------------
@@ -133,7 +141,38 @@ size_t mem_get_size(void * zone)
 **/
 void mem_free(void *zone) {
     //TODO: implement
-	assert(! "NOT IMPLEMENTED !");
+	struct mem_alloue_block_s* block_zone = zone-8;
+	struct mem_free_block_s* block_prec = gbl_state.first;
+	struct mem_free_block_s* block_suiv = block_prec->next;
+
+	//cas où la zone est placée avant le premier block (gbl_state.first OU block_prec ici).
+	if (block_zone < block_prec){
+
+		if (block_zone + block_zone->size == block_prec){ //la zone est "collée" au premier block.
+
+			//Appel Fonction mem_fuse avec block_zone et block_prec.
+
+		} else { //il existe un ou plusieurs block(s) alloués entre la zone et block_prec.
+			struct mem_free_block_s* block_zone_libere = (void *) block_alloue;
+			block_zone_libere.size = block_alloue->size;
+			block_zone_libere.next = gbl_state.first; //Plus propre/logique d'utiliser block_prec ?
+			gbl_state.first = block_zone_libere;
+		}
+
+		return; //pas super elegant, safe, à enlever si on est sur de ne pas rentrer dans les autres conditionelles.
+	}
+
+	//On cherche à se placer tel que block_prec < block_courant <blokc_suiv.
+	//on n'accompte pas pour la possibilité que l'utilisateur appelle free sur une zone libre.
+	While(block_prec < block_zone){
+		block_prec = block_suiv;
+		block_suiv = block_prec->next;
+	}
+
+	//Deux cas: 
+	//	-on a trouvé la situation où prec<zone<suiv
+	//	-on ne l'a pas trouvé: zone est placé après le dernier block libre.
+
 }
 
 //-------------------------------------------------------------
