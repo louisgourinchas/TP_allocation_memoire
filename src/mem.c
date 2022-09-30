@@ -26,7 +26,7 @@ typedef struct mem_state{
 	void *adresse;
 	size_t size;
 	struct mem_free_block_s* first;
-	struct mem_fit_function_t function;
+	struct mem_free_block_s* (*function)();
 } mem_state_t;
 
 //typedef struct mem_state mem_state_t;
@@ -66,11 +66,10 @@ void *mem_alloc(size_t size) {
 	}
 	realsize+=sizeof(struct mem_free_block_s);
 
-	//struct mem_free_block_s * emplacement = gbl_function(gbl_state.first, realsize);
-
 	//on trouve un block de taille suffisante
 	
-	struct mem_free_block_s *block_courant = gbl_state.first; 	
+	struct mem_free_block_s *block_courant = gbl_state.first; 
+	struct mem_free_block_s *block_courant_libre = gbl_state.first;	
 	struct mem_free_block_s *block_precedent = NULL;
 	struct mem_alloue_block_s *block_alloue;
 
@@ -86,8 +85,20 @@ void *mem_alloc(size_t size) {
 		return NULL;
 	}
 	*/
+	if (gbl_state.function == mem_first_fit){
+		block_courant = mem_first_fit(gbl_state.first, realsize);
+	} else if (gbl_state.function == mem_best_fit){
+		block_courant = mem_best_fit(gbl_state.first, realsize);
+	} else if (gbl_state.function == mem_worst_fit){
+		block_courant = mem_worst_fit(gbl_state.first, realsize);
+	}
 	
-	block_courant = mem_first_fit(gbl_state.first, realsize);
+	//on cherche le block_precedent en utilisant le block_courant obtenu par 1 de 3 strategies
+	while(block_courant != block_courant_libre){
+		block_precedent = block_courant_libre;
+		block_courant_libre = block_courant_libre->next;
+	}
+
 	if (block_courant -> size == realsize){ //on alloue le block courant en entier.
 
 		if(block_precedent != NULL)
