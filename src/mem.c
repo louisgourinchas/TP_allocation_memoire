@@ -11,6 +11,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#define ALIGN 8
+
 struct mem_free_block_s{
 	size_t size;
 	struct mem_free_block_s* next;
@@ -59,19 +61,21 @@ void *mem_alloc(size_t size) {
 	//Possiblement nécessaire de changer la taille pour prendre en compte l'en-tête (enlevé pour simplifier)
 	//Problèmesi on n'accompte pas pour l'en-tete: l'user 
 	size_t realsize = size;
-	if(size%8 != 0){
-		realsize = 8*((size/8)+1); //+1 pour avoir le multiple de 8 supp
+	if(size%ALIGN != 0){
+		realsize = ALIGN*((size/ALIGN)+1); //+1 pour avoir le multiple de ALIGN supp
 	}
 	realsize+=sizeof(struct mem_free_block_s);
 
-	struct mem_free_block_s * emplacement = gbl_function(gbl_state.first, realsize);
+	//struct mem_free_block_s * emplacement = gbl_function(gbl_state.first, realsize);
 
 	//on trouve un block de taille suffisante
+	
 	struct mem_free_block_s *block_courant = gbl_state.first; 	
 	struct mem_free_block_s *block_precedent = NULL;
 	struct mem_alloue_block_s *block_alloue;
 
 	//parcours des blocks vides jusqu'a arriver à la fin OU trouver un block courant de taille suffisante.
+	/*
 	while(block_courant != NULL && block_courant->size < size){
 		block_precedent = block_courant;
 		block_courant = block_courant->next;
@@ -81,7 +85,9 @@ void *mem_alloc(size_t size) {
 	if (block_courant == NULL){
 		return NULL;
 	}
-
+	*/
+	
+	block_courant = mem_first_fit(gbl_state.first, realsize);
 	if (block_courant -> size == realsize){ //on alloue le block courant en entier.
 
 		if(block_precedent != NULL)
@@ -121,7 +127,7 @@ void *mem_alloc(size_t size) {
 size_t mem_get_size(void * zone)
 {
     //TODO: test. potentiel problème: la zone est-elle allouée ou non (offset différent)
-	struct mem_alloue_block_s* block_zone = zone-8;
+	struct mem_alloue_block_s* block_zone = zone-ALIGN;
     return block_zone->size;
 }
 
@@ -136,7 +142,7 @@ void mem_free(void *zone) {
 
 		
     //TODO: implement
-	struct mem_alloue_block_s* block_zone = zone-8;
+	struct mem_alloue_block_s* block_zone = zone-ALIGN;
 
 	if(gbl_state.first == NULL)
 	{
@@ -291,12 +297,12 @@ mem_free_block_t *mem_first_fit(mem_free_block_t *first_free_block, size_t wante
 
 	//on trouve un block de taille suffisante
 	struct mem_free_block_s *block_courant = first_free_block; 	
-	struct mem_free_block_s *block_precedent = NULL;
-	struct mem_alloue_block_s *block_alloue;
+	//struct mem_free_block_s *block_precedent = NULL;
+	//struct mem_alloue_block_s *block_alloue;
 
 	//parcours des blocks vides jusqu'a arriver à la fin OU trouver un block courant de taille suffisante.
 	while(block_courant != NULL && block_courant->size < wanted_size){
-		block_precedent = block_courant;
+		//block_precedent = block_courant;
 		block_courant = block_courant->next;
 	}
 
@@ -307,17 +313,57 @@ mem_free_block_t *mem_first_fit(mem_free_block_t *first_free_block, size_t wante
 		return block_courant;
 	}
 
+	//return NULL;
 }
 //-------------------------------------------------------------
 mem_free_block_t *mem_best_fit(mem_free_block_t *first_free_block, size_t wanted_size) {
-    //TODO: implement
-	assert(! "NOT IMPLEMENTED !");
-	return NULL;
+
+    //on trouve le plus petit block de taille suffisante
+	struct mem_free_block_s *block_courant = first_free_block; 	
+	struct mem_free_block_s *block_fit = NULL;
+	int gap_memoire = 1000000;
+
+	//parcours des blocks vides jusqu'a arriver à la fin .
+	while(block_courant != NULL){
+		//block_precedent = block_courant;
+		if(block_courant->size > wanted_size && ((block_courant->size - wanted_size) < gap_memoire)){
+			block_fit = block_courant;
+			gap_memoire = block_courant->size - wanted_size;
+		}
+		block_courant = block_courant->next;
+	}
+
+	//pas de block mémoire de taille suffisante.
+	if (block_fit == NULL){
+		return NULL;
+	}else {
+		return block_fit;
+	}
+
 }
 
 //-------------------------------------------------------------
 mem_free_block_t *mem_worst_fit(mem_free_block_t *first_free_block, size_t wanted_size) {
-    //TODO: implement
-	assert(! "NOT IMPLEMENTED !");
-	return NULL;
+    
+	//on trouve le plus grand block de taille suffisante
+	struct mem_free_block_s *block_courant = first_free_block; 	
+	struct mem_free_block_s *block_fit = NULL;
+	int gap_memoire = 0;
+
+	//parcours des blocks vides jusqu'a arriver à la fin.
+	while(block_courant != NULL){
+		//block_precedent = block_courant;
+		if(block_courant->size > wanted_size && ((block_courant->size - wanted_size) > gap_memoire)){
+			block_fit = block_courant;
+			gap_memoire = block_courant->size - wanted_size;
+		}
+		block_courant = block_courant->next;
+	}
+
+	//pas de block mémoire de taille suffisante.
+	if (block_fit == NULL){
+		return NULL;
+	}else {
+		return block_fit;
+	}
 }
