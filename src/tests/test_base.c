@@ -32,7 +32,7 @@ static int make_test() {
     debug("Freeing all allocated memory\n");
     while (i >= 0) {
         mem_free(allocs[i]);
-        // debug("Freed %p\n", allocs[i]);
+        //debug("Freed %p\n", allocs[i]);
         i--;
     }
     return nb_alloc;

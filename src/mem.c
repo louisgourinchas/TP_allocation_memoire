@@ -46,7 +46,7 @@ void mem_init() {
 	gbl_state.first = gbl_state.adresse;
 	gbl_state.first->size=gbl_state.size;
 	gbl_state.first->next=NULL;
-	mem_set_fit_handler(mem_first_fit);
+	mem_set_fit_handler(mem_best_fit);
 }
 
 //-------------------------------------------------------------
@@ -79,18 +79,19 @@ void *mem_alloc(size_t size) {
 		block_precedent = block_courant;
 		block_courant = block_courant->next;
 	}
-
-	//pas de block mémoire de taille suffisante.
-	if (block_courant == NULL){
-		return NULL;
-	}
 	*/
+	
 	if (gbl_state.function == mem_first_fit){
 		block_courant = mem_first_fit(gbl_state.first, realsize);
 	} else if (gbl_state.function == mem_best_fit){
 		block_courant = mem_best_fit(gbl_state.first, realsize);
 	} else if (gbl_state.function == mem_worst_fit){
 		block_courant = mem_worst_fit(gbl_state.first, realsize);
+	}
+
+	//pas de block mémoire de taille suffisante.
+	if (block_courant == NULL){
+		return NULL;
 	}
 	
 	//on cherche le block_precedent en utilisant le block_courant obtenu par 1 de 3 strategies
@@ -169,7 +170,7 @@ void mem_free(void *zone) {
 	//cas où la zone est placée avant le premier block (gbl_state.first OU block_prec ici).
 	if ((void *)block_zone < (void *)block_prec){
 
-		if ((void * )(block_zone + block_zone->size) == (void *)block_prec){ //la zone est "collée" au premier block.
+		if ((void * )(block_zone + (block_zone->size)/ALIGN) == (void *)block_prec){ //la zone est "collée" au premier block.
 
 			size_t sauvegarde_taille = block_prec->size;
 			block_prec = (void *)block_zone;
@@ -195,7 +196,7 @@ void mem_free(void *zone) {
 
 	if((void *)block_prec < (void *)block_zone && (void *)block_zone < (void *)block_suiv){
 		// il y a block allouee entre block zone et block prec  ET  entre block zone et block suiv
-		if ((void *)(block_prec + block_prec->size) < (void *)block_zone && (void *)(block_zone + block_zone->size) < (void *)block_suiv)
+		if ((void *)(block_prec + (block_prec->size)/ALIGN) < (void *)block_zone && (void *)(block_zone + (block_zone->size)/ALIGN) < (void *)block_suiv)
 		{
 			struct mem_free_block_s* block_zone_lible = (void *)block_zone;
 			block_prec->next = block_zone_lible;
@@ -203,12 +204,12 @@ void mem_free(void *zone) {
 			block_zone_lible->size = block_zone->size;
 		}
 		// il y a block allouee entre block zone et block suiv  ET  block zone est justement colle apres block prec 
-		else if ((void *)(block_prec + block_prec->size) == (void *)block_zone && (void *)(block_zone + block_zone->size) < (void *)block_suiv)
+		else if ((void *)(block_prec + (block_prec->size)/ALIGN) == (void *)block_zone && (void *)(block_zone + (block_zone->size)/ALIGN) < (void *)block_suiv)
 		{
 			block_prec->size += block_zone->size;
 		}
 		// il y a block allouee entre block zone et block prec  ET  block zone est justement colle avant block suiv
-		else if ((void *)(block_prec + block_prec->size) < (void *)block_zone && (void *)(block_zone + block_zone->size) == (void *)block_suiv)
+		else if ((void *)(block_prec + (block_prec->size)/ALIGN) < (void *)block_zone && (void *)(block_zone + (block_zone->size)/ALIGN) == (void *)block_suiv)
 		{
 			struct mem_free_block_s* sauvegarde_suivant = block_suiv;
 			block_suiv = (void *)block_zone;
@@ -217,7 +218,7 @@ void mem_free(void *zone) {
 			block_suiv->size = block_zone->size + sauvegarde_suivant->size;
 		}
 		// block zone colle apres block prec et avant block suiv
-		else if ((void *)(block_prec + block_prec->size) == (void *)block_zone && (void *)(block_zone + block_zone->size) == (void *)block_suiv)
+		else if ((void *)(block_prec + (block_prec->size)/ALIGN) == (void *)block_zone && (void *)(block_zone + (block_zone->size)/ALIGN) == (void *)block_suiv)
 		{
 			block_prec->size += block_zone->size + block_suiv->size;
 			block_prec->next = block_suiv->next;
@@ -227,7 +228,7 @@ void mem_free(void *zone) {
 	else
 	{
 		// il y a block allouee entre block zone et block prec
-		if ((void *)(block_prec + block_prec->size) < (void *)block_zone)
+		if ((void *)(block_prec + (block_prec->size)/ALIGN) < (void *)block_zone)
 		{
 			struct mem_free_block_s* block_zone_lible = (void *)block_zone;
 			block_zone_lible->size = block_zone->size;
